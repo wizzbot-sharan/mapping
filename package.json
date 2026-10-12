@@ -1,0 +1,19 @@
+{
+  "name": "client-ca-mapping-dashboard",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack Client–CA Mapping Dashboard connecting React (Vite) and Node/Express with Azure PostgreSQL",
+  "scripts": {
+    "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "start": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"npm run start:backend\" \"npm run dev:frontend\"",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build:frontend": "npm --prefix frontend run build",
+    "start:backend": "npm --prefix backend start",
+    "db:init": "npm --prefix backend run db:init"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}
