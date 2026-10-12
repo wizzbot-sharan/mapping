@@ -105,12 +105,15 @@ export default function App() {
         setClients(prev => prev.map(c => (c.client_id === clientId ? { ...c, ...res.data } : c)));
         const clientName = res.data.full_name || 'Client';
         showToast(`Assigned CA ${caData.name} to ${clientName} successfully!`, 'success');
+        return true;
       } else {
         showToast(res.message || 'Failed to save CA assignment', 'error');
+        return false;
       }
     } catch (err) {
       console.error('Assignment failed:', err);
       showToast(err.message || 'Failed to save CA assignment', 'error');
+      return false;
     } finally {
       setSavingClientId(null);
     }

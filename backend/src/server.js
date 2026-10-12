@@ -98,7 +98,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start Server & verify DB
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`=========================================`);
   console.log(`  Client-CA Service running on port ${PORT}`);
   console.log(`  PowerSaver 10m Idle Hibernation: ACTIVE`);

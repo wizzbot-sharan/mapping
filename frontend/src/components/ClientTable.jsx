@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import Select from 'react-select';
 import { Search, Check, RefreshCw, AlertCircle, Mail, Tag, Sparkles } from 'lucide-react';
+import CAMobileSheet from './CAMobileSheet';
 
 export default function ClientTable({
   clients,
@@ -10,6 +11,7 @@ export default function ClientTable({
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'assigned', 'unassigned'
+  const [mobileActiveClient, setMobileActiveClient] = useState(null);
   
   // Track local selection per row: { [clientId]: selectedCAOption }
   const [rowSelections, setRowSelections] = useState({});
@@ -203,8 +205,8 @@ export default function ClientTable({
         </div>
       </div>
 
-      {/* Main Table: No Horizontal Scroll, Fixed Width Proportions */}
-      <div className="bg-[#141416] rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden w-full">
+      {/* Desktop Main Table: No Horizontal Scroll, Fixed Width Proportions */}
+      <div className="hidden md:block bg-[#141416] rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden w-full">
         <table className="w-full table-fixed text-left text-xs divide-y divide-white/[0.06]">
           <thead className="bg-[#0f0f11] text-[#86868b] font-semibold uppercase tracking-wider text-[11px]">
             <tr>
@@ -381,6 +383,83 @@ export default function ClientTable({
           </tbody>
         </table>
       </div>
+
+      {/* Mobile One-Line View (< 768px): Strictly Client Name & Prefilled CA Selector */}
+      <div className="block md:hidden">
+        {filteredClients.length === 0 ? (
+          <div className="bg-[#141416] rounded-2xl border border-white/[0.08] p-8 text-center text-[#86868b] shadow-lg">
+            <AlertCircle className="w-8 h-8 text-[#636366] mx-auto mb-2" />
+            <p className="font-medium text-[#f5f5f7]">
+              {clients.length === 0 ? 'No clients in dashboard' : 'No matching clients found'}
+            </p>
+            <p className="text-xs text-[#86868b] mt-1">
+              {clients.length === 0
+                ? 'Click "Sync Clients" in the header to synchronize.'
+                : 'Try adjusting your search query or filter.'}
+            </p>
+          </div>
+        ) : (
+          <div className="bg-[#141416] rounded-2xl border border-white/[0.08] divide-y divide-white/[0.06] overflow-hidden shadow-2xl">
+            {filteredClients.map((client) => {
+              const hasCA = !!client.ca_id && !!client.name;
+              return (
+                <div
+                  key={client.client_id}
+                  className="flex items-center justify-between px-3.5 py-3 gap-2.5 hover:bg-white/[0.02] transition-colors"
+                >
+                  {/* Client Name with Initial Badge */}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="w-7 h-7 rounded-full bg-white/[0.08] text-[#f5f5f7] flex items-center justify-center font-semibold text-xs border border-white/10 shrink-0">
+                      {(client.full_name || 'C').charAt(0).toUpperCase()}
+                    </div>
+                    <span
+                      className="font-semibold text-[#f5f5f7] text-xs truncate"
+                      title={client.full_name || 'No Name'}
+                    >
+                      {client.full_name || <span className="text-[#636366] italic">No Name</span>}
+                    </span>
+                  </div>
+
+                  {/* Prefilled CA Selector Trigger */}
+                  <button
+                    type="button"
+                    onClick={() => setMobileActiveClient(client)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border max-w-[50%] shrink-0 transition-all ${
+                      hasCA
+                        ? 'bg-[#1c1c1e] text-[#f5f5f7] border-white/15 hover:border-[#0a84ff]/50'
+                        : 'bg-[#ffd60a]/10 text-[#ffd60a] border-[#ffd60a]/25 hover:bg-[#ffd60a]/20'
+                    }`}
+                  >
+                    {hasCA ? (
+                      <>
+                        <span className="w-2 h-2 rounded-full bg-[#30d158] shadow-[0_0_6px_rgba(48,209,88,0.6)] shrink-0" />
+                        <span className="truncate">{client.name}</span>
+                      </>
+                    ) : (
+                      <span className="truncate">Select CA</span>
+                    )}
+                    <span className="text-[#86868b] text-[10px] shrink-0 ml-0.5">▾</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Apple Dark Mode Bottom Sheet Popup */}
+      <CAMobileSheet
+        isOpen={!!mobileActiveClient}
+        onClose={() => setMobileActiveClient(null)}
+        client={
+          mobileActiveClient
+            ? clients.find(c => c.client_id === mobileActiveClient.client_id) || mobileActiveClient
+            : null
+        }
+        cas={cas}
+        onAssignCA={onAssignCA}
+        isSaving={savingClientId === mobileActiveClient?.client_id}
+      />
     </div>
   );
 }
