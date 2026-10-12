@@ -218,12 +218,16 @@ export default function ClientTable({
           <tbody className="divide-y divide-white/[0.04]">
             {filteredClients.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-6 py-12 text-center text-[#86868b]">
+                <td colSpan="5" className="px-6 py-16 text-center text-[#86868b]">
                   <div className="max-w-xs mx-auto flex flex-col items-center">
                     <AlertCircle className="w-8 h-8 text-[#636366] mb-2" />
-                    <p className="font-medium text-[#f5f5f7]">No matching clients found</p>
+                    <p className="font-medium text-[#f5f5f7]">
+                      {clients.length === 0 ? 'No clients in dashboard' : 'No matching clients found'}
+                    </p>
                     <p className="text-xs text-[#86868b] mt-1">
-                      Try adjusting your search query or filter.
+                      {clients.length === 0
+                        ? 'Click "Sync Clients" in the header to synchronize from database.'
+                        : 'Try adjusting your search query or filter.'}
                     </p>
                   </div>
                 </td>
