@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import Select from 'react-select';
-import { Search, Check, RefreshCw, AlertCircle, Mail, Tag, Sparkles } from 'lucide-react';
+import { Search, Check, RefreshCw, AlertCircle, Mail, Tag, Sparkles, Clock, ShieldCheck } from 'lucide-react';
 import CAMobileSheet from './CAMobileSheet';
+import AssignmentModal from './AssignmentModal';
 
 export default function ClientTable({
   clients,
@@ -12,6 +13,7 @@ export default function ClientTable({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'assigned', 'unassigned'
   const [mobileActiveClient, setMobileActiveClient] = useState(null);
+  const [pendingAssignment, setPendingAssignment] = useState(null);
   
   // Track local selection per row: { [clientId]: selectedCAOption }
   const [rowSelections, setRowSelections] = useState({});
@@ -61,17 +63,30 @@ export default function ClientTable({
     }));
   };
 
-  // Handle clicking OK to assign CA
+  // Handle clicking OK - opens AssignmentModal for permanent vs temp choice
   const handleConfirmAssignment = (client) => {
     const selectedOption = rowSelections[client.client_id];
     if (!selectedOption || !selectedOption.caRecord) return;
 
-    const ca = selectedOption.caRecord;
-    onAssignCA(client.client_id, {
-      ca_id: ca.id,
-      name: ca.name,
-      email: ca.email
+    setPendingAssignment({
+      client,
+      selectedCA: selectedOption.caRecord
     });
+  };
+
+  // Modal execution handler
+  const handleModalConfirm = async (assignment_type) => {
+    if (!pendingAssignment) return;
+    const { client, selectedCA } = pendingAssignment;
+    const ok = await onAssignCA(client.client_id, {
+      ca_id: selectedCA.id,
+      name: selectedCA.name,
+      email: selectedCA.email,
+      assignment_type
+    });
+    if (ok) {
+      setPendingAssignment(null);
+    }
   };
 
   // Apple dark mode custom react-select styles
@@ -245,10 +260,13 @@ export default function ClientTable({
                   ? caOptions.find(opt => opt.value === String(client.ca_id)) || null
                   : null;
 
-                // OK button disabled if same as current or no selection or saving
+                // OK button disabled if saving, or no selection, or if already permanently assigned to this exact CA
                 const hasSelection = !!selectedOption;
                 const isSameAsCurrent = selectedOption && String(selectedOption.value) === String(client.ca_id);
-                const isOkDisabled = isSavingThis || !hasSelection || isSameAsCurrent;
+                const isAlreadyPermanentWithSameCA = isSameAsCurrent && (client.assignment_type === 'permanent' || !client.assignment_type);
+                const isOkDisabled = isSavingThis || !hasSelection || isAlreadyPermanentWithSameCA;
+
+                const isTemp = client.assignment_type === 'temp';
 
                 return (
                   <tr
@@ -304,15 +322,43 @@ export default function ClientTable({
                     <td className="px-4 py-3 truncate">
                       {client.name ? (
                         <div className="flex flex-col truncate" title={`${client.name} (${client.email || ''})`}>
-                          <span className="inline-flex items-center gap-1.5 font-medium text-[#f5f5f7] truncate">
-                            <span className="w-2 h-2 rounded-full bg-[#30d158] shadow-[0_0_6px_rgba(48,209,88,0.5)] shrink-0"></span>
-                            <span className="truncate">{client.name}</span>
-                          </span>
-                          {client.email && (
-                            <span className="text-[11px] text-[#86868b] ml-3.5 truncate">
-                              {client.email}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                isTemp
+                                  ? 'bg-[#ff9f0a] shadow-[0_0_6px_rgba(255,159,10,0.6)]'
+                                  : 'bg-[#30d158] shadow-[0_0_6px_rgba(48,209,88,0.5)]'
+                              }`}
+                            />
+                            <span className="font-medium text-[#f5f5f7] truncate">{client.name}</span>
+                            
+                            {isTemp ? (
+                              <span
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[#ff9f0a]/15 text-[#ff9f0a] border border-[#ff9f0a]/30 shrink-0"
+                                title={`Temporary assignment for today. Resets at 9:00 AM IST back to: ${client.permanent_name || 'Unassigned'}`}
+                              >
+                                <Clock className="w-2.5 h-2.5" />
+                                <span>Temp</span>
+                              </span>
+                            ) : (
+                              <span
+                                className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-[#30d158]/10 text-[#30d158] border border-[#30d158]/20 shrink-0"
+                                title="Permanently assigned CA"
+                              >
+                                <ShieldCheck className="w-2.5 h-2.5" />
+                                <span>Perm</span>
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[11px] text-[#86868b] ml-3.5 truncate">
+                            {client.email && <span className="truncate">{client.email}</span>}
+                            {isTemp && (
+                              <span className="text-[#ff9f0a]/75 text-[10px] truncate">
+                                (Fallback: {client.permanent_name || 'None'})
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md bg-[#ffd60a]/10 text-[#ffd60a] border border-[#ffd60a]/20">
@@ -358,11 +404,13 @@ export default function ClientTable({
                           title={
                             isSavingThis
                               ? 'Saving assignment...'
-                              : isSameAsCurrent
-                              ? 'This CA is already assigned'
+                              : isAlreadyPermanentWithSameCA
+                              ? 'This CA is already permanently assigned'
                               : !hasSelection
                               ? 'Please select a CA first'
-                              : 'Confirm assignment'
+                              : isTemp && isSameAsCurrent
+                              ? 'Make this temporary assignment permanent'
+                              : 'Choose Permanent or Temporary assignment'
                           }
                         >
                           {isSavingThis ? (
@@ -424,7 +472,7 @@ export default function ClientTable({
                   <button
                     type="button"
                     onClick={() => setMobileActiveClient(client)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border max-w-[50%] shrink-0 transition-all ${
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium border max-w-[55%] shrink-0 transition-all ${
                       hasCA
                         ? 'bg-[#1c1c1e] text-[#f5f5f7] border-white/15 hover:border-[#0a84ff]/50'
                         : 'bg-[#ffd60a]/10 text-[#ffd60a] border-[#ffd60a]/25 hover:bg-[#ffd60a]/20'
@@ -432,8 +480,19 @@ export default function ClientTable({
                   >
                     {hasCA ? (
                       <>
-                        <span className="w-2 h-2 rounded-full bg-[#30d158] shadow-[0_0_6px_rgba(48,209,88,0.6)] shrink-0" />
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            client.assignment_type === 'temp'
+                              ? 'bg-[#ff9f0a] shadow-[0_0_6px_rgba(255,159,10,0.6)]'
+                              : 'bg-[#30d158] shadow-[0_0_6px_rgba(48,209,88,0.6)]'
+                          }`}
+                        />
                         <span className="truncate">{client.name}</span>
+                        {client.assignment_type === 'temp' && (
+                          <span className="text-[9px] font-bold px-1 py-0.2 rounded bg-[#ff9f0a]/20 text-[#ff9f0a] shrink-0">
+                            Temp
+                          </span>
+                        )}
                       </>
                     ) : (
                       <span className="truncate">Select CA</span>
@@ -446,6 +505,16 @@ export default function ClientTable({
           </div>
         )}
       </div>
+
+      {/* Assignment Duration Modal (Permanent vs Temporary) */}
+      <AssignmentModal
+        isOpen={!!pendingAssignment}
+        onClose={() => setPendingAssignment(null)}
+        client={pendingAssignment?.client}
+        selectedCA={pendingAssignment?.selectedCA}
+        onConfirm={handleModalConfirm}
+        isSaving={savingClientId === pendingAssignment?.client?.client_id}
+      />
 
       {/* Apple Dark Mode Bottom Sheet Popup */}
       <CAMobileSheet

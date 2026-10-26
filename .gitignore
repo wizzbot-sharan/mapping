@@ -20,3 +20,6 @@ yarn-debug.log*
 # OS metadata
 .DS_Store
 Thumbs.db
+
+# Test artifacts
+.playwright-mcp/

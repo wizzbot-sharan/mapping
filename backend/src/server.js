@@ -13,6 +13,8 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import { checkDatabaseConnection, ensureDbPool, hibernateDbPool } from './config/db.js';
 import { initTables } from './scripts/initDb.js';
+import { resetExpiredTempAssignments } from './controllers/clientController.js';
+import { getCAClientMappings } from './controllers/caController.js';
 import clientRoutes from './routes/clientRoutes.js';
 import caRoutes from './routes/caRoutes.js';
 
@@ -50,6 +52,16 @@ const hibernationMonitor = setInterval(async () => {
 }, 30000);
 hibernationMonitor.unref();
 
+// Periodic monitor: Check and reset expired temporary assignments every 60 seconds
+const tempResetMonitor = setInterval(async () => {
+  try {
+    await resetExpiredTempAssignments();
+  } catch (err) {
+    console.error('[Periodic Temp Reset Error]:', err.message);
+  }
+}, 60000);
+tempResetMonitor.unref();
+
 // Standard middleware
 app.use(cors({
   origin: '*',
@@ -62,6 +74,7 @@ app.use(express.json());
 // API Routes
 app.use('/api/clients', clientRoutes);
 app.use('/api/cas', caRoutes);
+app.get('/api/ca-mappings', getCAClientMappings);
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {

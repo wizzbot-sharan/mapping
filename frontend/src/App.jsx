@@ -104,7 +104,13 @@ export default function App() {
         // Update client in local state
         setClients(prev => prev.map(c => (c.client_id === clientId ? { ...c, ...res.data } : c)));
         const clientName = res.data.full_name || 'Client';
-        showToast(`Assigned CA ${caData.name} to ${clientName} successfully!`, 'success');
+        const isTemp = caData.assignment_type === 'temp';
+        showToast(
+          isTemp
+            ? `Temporarily assigned CA ${caData.name} to ${clientName} (resets at 9:00 AM IST)!`
+            : `Permanently assigned CA ${caData.name} to ${clientName}!`,
+          'success'
+        );
         return true;
       } else {
         showToast(res.message || 'Failed to save CA assignment', 'error');

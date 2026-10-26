@@ -40,7 +40,7 @@ export const fetchCAs = async () => {
 };
 
 /**
- * Assign or update a CA for a client
+ * Assign or update a CA for a client (supports assignment_type: 'permanent' | 'temp')
  */
 export const assignCA = async (clientId, caData) => {
   const res = await fetch(`${API_BASE}/clients/${encodeURIComponent(clientId)}/assign-ca`, {
@@ -53,6 +53,17 @@ export const assignCA = async (clientId, caData) => {
     throw new Error(data.message || 'Failed to assign CA');
   }
   return data;
+};
+
+/**
+ * Trigger manual reset of expired temporary CA assignments
+ */
+export const resetTempAssignments = async () => {
+  const res = await fetch(`${API_BASE}/clients/reset-temp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  });
+  return await res.json();
 };
 
 /**

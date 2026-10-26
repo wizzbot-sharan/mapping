@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Search, Check, X, RefreshCw, UserCheck, AlertCircle } from 'lucide-react';
+import { Search, Check, X, RefreshCw, UserCheck, AlertCircle, Clock, ShieldCheck } from 'lucide-react';
 
 export default function CAMobileSheet({
   isOpen,
@@ -35,14 +35,16 @@ export default function CAMobileSheet({
   if (!isOpen || !client) return null;
 
   const isCurrentSame = selectedCA && String(selectedCA.id) === String(client.ca_id);
-  const isOkDisabled = isSaving || !selectedCA || isCurrentSame;
+  const isAlreadyPermanentWithSameCA = isCurrentSame && (client.assignment_type === 'permanent' || !client.assignment_type);
+  const isOkDisabled = isSaving || !selectedCA;
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (assignment_type) => {
     if (!selectedCA) return;
     const ok = await onAssignCA(client.client_id, {
       ca_id: selectedCA.id,
       name: selectedCA.name,
-      email: selectedCA.email
+      email: selectedCA.email,
+      assignment_type
     });
     // Auto-close sheet on successful save
     if (ok) {
@@ -157,37 +159,54 @@ export default function CAMobileSheet({
         </div>
 
         {/* Sticky Action Footer */}
-        <div className="p-3.5 border-t border-white/[0.08] bg-[#141416] flex items-center gap-2.5 rounded-b-3xl">
+        <div className="p-3.5 border-t border-white/[0.08] bg-[#141416] flex flex-col gap-2 rounded-b-3xl">
+          <div className="flex items-center gap-2">
+            {/* Permanent Button */}
+            <button
+              type="button"
+              onClick={() => handleConfirm('permanent')}
+              disabled={isOkDisabled || isAlreadyPermanentWithSameCA}
+              className={`flex-1 py-2.5 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md ${
+                isOkDisabled || isAlreadyPermanentWithSameCA
+                  ? 'bg-[#242426] text-[#636366] border border-white/[0.04] cursor-not-allowed shadow-none'
+                  : 'bg-[#30d158]/20 hover:bg-[#30d158]/30 active:bg-[#30d158]/40 text-[#30d158] border border-[#30d158]/40 shadow-[#30d158]/15'
+              }`}
+            >
+              {isSaving ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <ShieldCheck className="w-3.5 h-3.5" />
+              )}
+              <span>Permanent</span>
+            </button>
+
+            {/* Temporary Button */}
+            <button
+              type="button"
+              onClick={() => handleConfirm('temp')}
+              disabled={isOkDisabled}
+              className={`flex-1 py-2.5 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md ${
+                isOkDisabled
+                  ? 'bg-[#242426] text-[#636366] border border-white/[0.04] cursor-not-allowed shadow-none'
+                  : 'bg-[#ff9f0a]/20 hover:bg-[#ff9f0a]/30 active:bg-[#ff9f0a]/40 text-[#ff9f0a] border border-[#ff9f0a]/40 shadow-[#ff9f0a]/15'
+              }`}
+            >
+              {isSaving ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Clock className="w-3.5 h-3.5" />
+              )}
+              <span>Temp (Today)</span>
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={onClose}
             disabled={isSaving}
-            className="flex-1 py-2 text-xs font-semibold rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-[#f5f5f7] transition-all"
+            className="w-full py-1.5 text-xs font-medium text-[#86868b] hover:text-[#f5f5f7] transition-colors text-center"
           >
             Cancel
-          </button>
-          
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={isOkDisabled}
-            className={`flex-1 py-2 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md ${
-              isOkDisabled
-                ? 'bg-[#242426] text-[#636366] border border-white/[0.04] cursor-not-allowed shadow-none'
-                : 'bg-[#0a84ff] hover:bg-[#0071e3] active:bg-[#005bb5] text-white shadow-[#0a84ff]/30'
-            }`}
-          >
-            {isSaving ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Check className="w-3.5 h-3.5" />
-                <span>OK - Confirm</span>
-              </>
-            )}
           </button>
         </div>
       </div>
